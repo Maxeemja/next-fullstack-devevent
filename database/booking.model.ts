@@ -1,10 +1,12 @@
 import {
-  HydratedDocument,
-  Model,
   Schema,
   Types,
   model,
   models,
+  type HydratedDocument,
+  type Model,
+  type Query,
+  type UpdateQuery,
 } from 'mongoose';
 import { Event } from './event.model';
 
@@ -47,6 +49,42 @@ bookingSchema.pre(
 
     if (!eventExists) {
       throw new Error(`Event ${this.eventId.toString()} does not exist`);
+    }
+  }
+);
+
+bookingSchema.pre<Query<unknown, Booking>>(
+  'updateOne',
+  async function (): Promise<void> {
+    const update = this.getUpdate();
+
+    if (Array.isArray(update)) {
+      throw new Error('Booking update pipelines are not supported');
+    }
+
+    this.setOptions({ runValidators: true });
+
+    if (!update) {
+      return;
+    }
+
+    const bookingUpdate = update as UpdateQuery<Booking>;
+    const updateTargets = [
+      bookingUpdate,
+      bookingUpdate.$set,
+      bookingUpdate.$setOnInsert,
+    ];
+
+    for (const fields of updateTargets) {
+      if (!fields || fields.eventId === undefined) {
+        continue;
+      }
+
+      const eventExists = await Event.exists({ _id: fields.eventId });
+
+      if (!eventExists) {
+        throw new Error(`Event ${fields.eventId.toString()} does not exist`);
+      }
     }
   }
 );

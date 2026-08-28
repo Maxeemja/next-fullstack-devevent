@@ -1,4 +1,12 @@
-import { HydratedDocument, Model, Schema, model, models } from 'mongoose';
+import {
+  Schema,
+  model,
+  models,
+  type HydratedDocument,
+  type Model,
+  type Query,
+  type UpdateQuery,
+} from 'mongoose';
 
 export interface IEvent {
   title: string;
@@ -32,9 +40,25 @@ const slugify = (title: string): string =>
     .replace(/^-+|-+$/g, '');
 
 const normalizeDate = (value: string): string => {
-  const date = new Date(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (!match) {
+    throw new Error('Event date must be a valid date');
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(0);
+
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCFullYear(year, month - 1, day);
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
     throw new Error('Event date must be a valid date');
   }
 
@@ -114,6 +138,69 @@ eventSchema.pre('save', function (this: EventDocument): void {
   // Store dates as ISO calendar dates and times as 24-hour HH:mm values.
   this.date = normalizeDate(this.date);
   this.time = normalizeTime(this.time);
+});
+
+eventSchema.pre('insertMany', function (docs: IEvent | IEvent[]): void {
+  for (const event of Array.isArray(docs) ? docs : [docs]) {
+    event.slug = slugify(event.title);
+
+    if (!event.slug) {
+      throw new Error('Event title must produce a valid slug');
+    }
+
+    event.date = normalizeDate(event.date);
+    event.time = normalizeTime(event.time);
+  }
+});
+
+eventSchema.pre<Query<unknown, IEvent>>('updateOne', function (): void {
+  const update = this.getUpdate();
+
+  if (Array.isArray(update)) {
+    throw new Error('Event update pipelines are not supported');
+  }
+
+  this.setOptions({ runValidators: true });
+
+  if (!update) {
+    return;
+  }
+
+  const eventUpdate = update as UpdateQuery<IEvent>;
+  const updateTargets = [
+    eventUpdate,
+    eventUpdate.$set,
+    eventUpdate.$setOnInsert,
+  ];
+
+  for (const fields of updateTargets) {
+    if (!fields) {
+      continue;
+    }
+
+    if (fields.title !== undefined) {
+      fields.slug = slugify(fields.title);
+
+      if (!fields.slug) {
+        throw new Error('Event title must produce a valid slug');
+      }
+    } else if (
+      fields.slug !== undefined &&
+      (typeof fields.slug !== 'string' || !fields.slug)
+    ) {
+      throw new Error('Event title must produce a valid slug');
+    }
+
+    if (fields.date !== undefined) {
+      fields.date = normalizeDate(fields.date);
+    }
+
+    if (fields.time !== undefined) {
+      fields.time = normalizeTime(fields.time);
+    }
+  }
+
+  this.setUpdate(eventUpdate);
 });
 
 export const Event: EventModel =
