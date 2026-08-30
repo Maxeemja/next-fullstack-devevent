@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
+import BookEvent from '@/components/BookEvent';
 
 const BASE_URL = process.env.BASE_URL;
 
@@ -51,7 +52,10 @@ async function EventDetailsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const response = await fetch(`${BASE_URL}/api/events/${slug}`);
+  const response = await fetch(`${BASE_URL}/api/events/${slug}`, {
+    next: { revalidate: 60 },
+  });
+
   const payload = await response.json();
 
   if (!response.ok || !payload.event) return notFound();
@@ -123,10 +127,17 @@ async function EventDetailsPage({
           <EventTags tags={tags} />
         </div>
         <aside className="booking">
-          <p className="text-lg font-semibold">Book event</p>
+          <div className="signup-card">
+            <h2>Book your spot</h2>
+            {bookings > 0 ? (
+              <p className="text-sm">
+                Join {bookings} people who already booked their spot!
+              </p>
+            ) : (
+              <p className="text-sm">Be the first to book!</p>
+            )}
 
-          <div className="bookings">
-            
+            <BookEvent />
           </div>
         </aside>
       </div>
