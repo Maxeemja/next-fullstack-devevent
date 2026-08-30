@@ -13,8 +13,12 @@ export async function POST(req: NextRequest) {
       string,
       FormDataEntryValue
     >;
+    const parsedArrays: Record<'agenda' | 'tags', string[]> = {
+      agenda: [],
+      tags: [],
+    };
 
-    for (const field of ['agenda', 'tags']) {
+    for (const field of ['agenda', 'tags'] as const) {
       const value = event[field];
 
       if (typeof value === 'string') {
@@ -33,7 +37,7 @@ export async function POST(req: NextRequest) {
             );
           }
 
-          event[field] = parsedValue.join('\u0000');
+          parsedArrays[field] = parsedValue;
         } catch {
           return NextResponse.json(
             { message: `${field} must be valid JSON` },
@@ -73,9 +77,8 @@ export async function POST(req: NextRequest) {
 
     const eventData = {
       ...event,
-      agenda:
-        typeof event.agenda === 'string' ? event.agenda.split('\u0000') : [],
-      tags: typeof event.tags === 'string' ? event.tags.split('\u0000') : [],
+      agenda: parsedArrays.agenda,
+      tags: parsedArrays.tags,
     };
 
     const createdEvent = await Event.create(eventData);

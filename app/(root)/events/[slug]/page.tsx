@@ -51,22 +51,25 @@ async function EventDetailsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const response = await fetch(`${BASE_URL}/api/events/${slug}`);
+  const payload = await response.json();
+
+  if (!response.ok || !payload.event) return notFound();
+
   const {
-    event: {
-      description,
-      title,
-      date,
-      time,
-      location,
-      agenda,
-      image,
-      mode,
-      overview,
-      audience,
-      organizer,
-      tags,
-    },
-  } = await fetch(`${BASE_URL}/api/events/${slug}`).then((res) => res.json());
+    description,
+    title,
+    date,
+    time,
+    location,
+    agenda,
+    image,
+    mode,
+    overview,
+    audience,
+    organizer,
+    tags,
+  } = payload.event;
 
   if (!title) return notFound();
 
