@@ -9,17 +9,38 @@ export async function POST(req: NextRequest) {
     await connectToDatabase();
 
     const formData = await req.formData();
-    let event;
+    const event = Object.fromEntries(formData.entries()) as Record<
+      string,
+      FormDataEntryValue
+    >;
 
-    try {
-      event = Object.fromEntries(formData.entries());
-    } catch (e) {
-      return NextResponse.json(
-        {
-          message: 'Invalid JSON data format',
-        },
-        { status: 400 }
-      );
+    for (const field of ['agenda', 'tags']) {
+      const value = event[field];
+
+      if (typeof value === 'string') {
+        try {
+          const parsedValue: unknown = JSON.parse(value);
+
+          if (
+            !Array.isArray(parsedValue) ||
+            !parsedValue.every(
+              (item): item is string => typeof item === 'string'
+            )
+          ) {
+            return NextResponse.json(
+              { message: `${field} must be a JSON array of strings` },
+              { status: 400 }
+            );
+          }
+
+          event[field] = parsedValue.join('\u0000');
+        } catch {
+          return NextResponse.json(
+            { message: `${field} must be valid JSON` },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     const file = formData.get('image') as File;
@@ -50,7 +71,14 @@ export async function POST(req: NextRequest) {
 
     event.image = (uploadResult as { secure_url: string }).secure_url;
 
-    const createdEvent = await Event.create(event);
+    const eventData = {
+      ...event,
+      agenda:
+        typeof event.agenda === 'string' ? event.agenda.split('\u0000') : [],
+      tags: typeof event.tags === 'string' ? event.tags.split('\u0000') : [],
+    };
+
+    const createdEvent = await Event.create(eventData);
     return NextResponse.json(
       {
         message: 'Event created successfully',
