@@ -1,19 +1,21 @@
 import ExploreBtn from '@/components/ExploreBtn';
 import EventCard from '@/components/EventCard';
 import { IEvent } from '@/database/event.model';
-
-export const dynamic = 'force-dynamic';
+import { cacheLife } from 'next/cache';
 
 const BASE_URL = process.env.BASE_URL;
 
 const RootPage = async () => {
+  'use cache';
+  cacheLife('hours');
+
   if (!BASE_URL) {
     throw new Error('Missing BASE_URL environment variable');
   }
 
   const response = await fetch(`${BASE_URL}/api/events`);
   const { events } = await response.json();
-  console.log('events', events);
+
   return (
     <section>
       <h1 className="text-center">
