@@ -1,11 +1,21 @@
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 import BookEvent from '@/components/BookEvent';
-import { getSimilarEventsBySlug } from '@/lib/actions/event.actions';
+import {
+  getSimilarEventsBySlug,
+  getEventBySlug,
+  getAllEvents,
+} from '@/lib/actions/event.actions';
 import { IEvent } from '@/database/event.model';
 import EventCard from '@/components/EventCard';
+import { cacheLife } from 'next/cache';
 
-const BASE_URL = process.env.BASE_URL;
+export async function generateStaticParams() {
+  const events = await getAllEvents();
+  return events.map((event) => ({
+    slug: event.slug,
+  }));
+}
 
 const EventDetailItem = ({
   icon,
@@ -54,14 +64,13 @@ async function EventDetailsPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  'use cache';
+  cacheLife('hours');
+
   const { slug } = await params;
-  const response = await fetch(`${BASE_URL}/api/events/${slug}`, {
-    next: { revalidate: 60 },
-  });
+  const event = await getEventBySlug(slug);
 
-  const payload = await response.json();
-
-  if (!response.ok || !payload.event) return notFound();
+  if (!event) return notFound();
 
   const {
     description,
@@ -76,7 +85,7 @@ async function EventDetailsPage({
     audience,
     organizer,
     tags,
-  } = payload.event;
+  } = event;
 
   if (!title) return notFound();
 
