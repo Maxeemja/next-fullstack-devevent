@@ -12,9 +12,13 @@ import { cacheLife } from 'next/cache';
 
 export async function generateStaticParams() {
   const events = await getAllEvents();
-  return events.map((event) => ({
-    slug: event.slug,
-  }));
+  const params = events.map((event) => ({ slug: event.slug }));
+
+  if (params.length === 0) {
+    return [{ slug: 'placeholder' }];
+  }
+
+  return params;
 }
 
 const EventDetailItem = ({
