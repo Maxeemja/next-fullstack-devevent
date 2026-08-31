@@ -155,7 +155,7 @@ async function EventDetailsPage({
               <p className="text-sm">Be the first to book!</p>
             )}
 
-            <BookEvent />
+            <BookEvent eventId={event._id.toString()} />
           </div>
         </aside>
       </div>
