@@ -32,7 +32,14 @@ const RootPage = async () => {
             events.length &&
             events.map((event: IEvent) => (
               <li key={event.title}>
-                <EventCard {...event} />
+                <EventCard
+                  title={event.title}
+                  image={event.image}
+                  slug={event.slug}
+                  location={event.location}
+                  date={event.date}
+                  time={event.time}
+                />
               </li>
             ))}
         </ul>
